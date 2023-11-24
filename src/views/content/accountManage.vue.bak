@@ -1,0 +1,146 @@
+<template>
+  <div :class="{'ly-is-full':isFull}">
+    <div class="tableSelect" ref="tableSelect">
+      <el-form :inline="true" :model="formInline" label-position="left">
+        <el-form-item label="用户ID（数字）：">
+          <el-input size="default" v-model.trim="formInline.searchId" maxlength="100" style="width:200px;" clearable placeholder="用户ID（数字）" @change="search"></el-input>
+        </el-form-item>
+        <el-form-item label="用户ID（字符）：">
+          <el-input size="default" v-model.trim="formInline.searchName" maxlength="100" style="width:200px;" clearable placeholder="用户ID（字符）" @change="search"></el-input>
+        </el-form-item>
+        <el-form-item label="平台：">
+          <el-input size="default" v-model.trim="formInline.platform" maxlength="60" style="width:100px;" clearable placeholder="平台" @change="search"></el-input>
+        </el-form-item>
+        <el-form-item label="">
+          <el-button @click="search" type="primary" icon="Search">查询</el-button>
+        </el-form-item>
+        <el-form-item label="">
+          <el-button @click="handleEdit" icon="Refresh">重置</el-button>
+        </el-form-item>
+      </el-form>
+    </div>
+    <el-table :height="'calc('+(tableHeight)+'px)'" border :data="tableData" ref="tableref" v-loading="loadingPage" style="width: 100%">
+      <el-table-column type="index" width="50" align="center" label="序号"></el-table-column>
+      <el-table-column min-width="50" v-for="(column, index) in Object.keys(tableData[0])" :prop="column" :label="column" show-overflow-tooltip></el-table-column>
+      <!--      <el-table-column min-width="90" prop="task_id" label="任务id" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="100" prop="created_at" label="创建时间" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="50" prop="favourites_count" label="点赞数" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="50" prop="followers_count" label="粉丝数" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="50" prop="friends_count" label="关注数" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="100" prop="user_id" label="用户ID" show-overflow-tooltip></el-table-column>-->
+      <!--      <el-table-column min-width="100" prop="user_id" label="用户ID" show-overflow-tooltip></el-table-column>-->
+    </el-table>
+    <Pagination v-bind:child-msg="pageparm" @callFather="callFather"></Pagination>
+  </div>
+</template>
+
+<script setup>
+import Pagination from "@/components/Pagination";
+import {ref, reactive, onMounted, onUnmounted, nextTick} from 'vue'
+import {apiUsers} from '@/utils/api'
+import {dateFormats, getTableHeight} from "@/utils/common";
+
+const tableSelect = ref(null)
+let tableHeight = ref(500)
+let isFull = ref(false)
+let loadingPage = ref(false)
+let formInline = reactive({
+  page: 1,
+  limit: 10,
+  searchId: "",
+  searchName: "",
+  platform: "",
+  beginAt: "",
+  endAt: "",
+})
+let pageparm = reactive({
+  page: 1,
+  limit: 10,
+  total: 0
+})
+let timers = reactive([])
+let tableData = reactive([{}])
+
+getData()
+
+
+onMounted(() => {
+      // getTheTableHeight()
+      // 监听页面宽度变化搜索框的高度
+      window.addEventListener('resize', listenResize);
+      nextTick(() => {
+        getTheTableHeight()
+      })
+    }
+)
+
+onUnmounted(() => {
+      // 页面销毁，去掉监听事件
+      window.removeEventListener("resize", listenResize);
+    }
+)
+
+function listenResize() {
+  nextTick(() => {
+    getTheTableHeight()
+  })
+}
+
+function getTheTableHeight() {
+  let tabSelectHeight = tableSelect.value ? tableSelect.value.offsetHeight : 0
+  tabSelectHeight = isFull.value ? tabSelectHeight : tabSelectHeight - 70
+  tableHeight.value = getTableHeight(tabSelectHeight)
+}
+
+function callFather(parm) {
+  formInline.page = parm.page
+  formInline.limit = parm.limit
+  getData()
+}
+
+function search() {
+  formInline.page = 1
+  formInline.limit = 10
+  getData()
+}
+
+function timeChange(val) {
+  console.log(val)
+  if (val) {
+    formInline.beginAt = dateFormats(val[0], 'yyyy-MM-dd hh:mm:ss');
+    formInline.endAt = dateFormats(val[1], 'yyyy-MM-dd hh:mm:ss');
+  } else {
+    formInline.beginAt = null
+    formInline.endAt = null
+  }
+  search()
+}
+
+
+function handleEdit() {
+  formInline.page = 1
+  formInline.limit = 10
+  formInline.searchId = ""
+  formInline.searchName = ""
+  formInline.platform = ""
+  pageparm.page = 1
+  pageparm.limit = 10
+  pageparm.total = 0
+  getData()
+}
+
+function getData() {
+  loadingPage.value = true
+  apiUsers(formInline).then(res => {
+    loadingPage.value = false
+    if (res.data.code === 2000) {
+      tableData = JSON.parse(res.data.data)
+      // console.log(tableData)
+      pageparm.page = res.data.page;
+      pageparm.limit = res.data.limit;
+      pageparm.total = res.data.total;
+    }
+  })
+}
+
+</script>
